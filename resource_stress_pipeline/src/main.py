@@ -14,9 +14,9 @@ parser.add_argument("--disk_stress",type=bool,default=False,help="Activate disk 
 parser.add_argument("--network_stress",type=bool,default=False,help="Activate network I/O Stress [True,False]")
 parser.add_argument("--cpu_num",type=int,default=12,help="Define CPU core nums (Default: 12)")
 parser.add_argument("--mem_amount",type=str,default=2000,help="Amount of Memory Stress (default=2000)")
-parser.add_argument("--size_mb",type=int,default=500,help="Amount of Memory Stress (default=2000)")
-parser.add_argument("--net_url",type=str,default='http://localhost',help="Address of Network I/O Test")
-parser.add_argument("--net_port",type=str,default='5000',help="Port of Network I/O Test")
+parser.add_argument("--size_mb",type=int,default=500,help="Amount of Disk Stress (default=500)")
+parser.add_argument("--net_url",type=str,default='http://localhost',help="Address of Network I/O Test(ex: http://localhost)")
+parser.add_argument("--net_port",type=str,default='5000',help="Port of Network I/O Test Destination")
 parser.add_argument("--network_mode",type=str,default='preprocess', help="Test mode for Network I/O [preprocess, inference]")
 args = parser.parse_args()
 
