@@ -16,4 +16,4 @@ for doc in argo_yaml:
             print("Change Service:argo-server's ")
             print(doc)
 with open("./argo_install.yaml", 'w') as f:
-    yaml.dump_all(argo_yaml, f)
+    yaml.dump_all(argo_yaml, f, width=4096, default_flow_style=False)
