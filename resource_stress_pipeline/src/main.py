@@ -34,18 +34,20 @@ __global__ void gpu_load_kernel(int *data, int N) {
 def test_info(total_time:int):
     print(f"\n\nTest information : \n Total Test Time : {round(total_time/60,4)}m \
           \n each test duration : {args.time}m \
-          \n cpu stress test : {args.cpu_stress} \ 
-          \n memory stress test : {args.memory_stress}  \
-          \n gpu stress test : {args.gpu_stress}  \
-          \n \n cpu cores using cpu stress test : {args.cpu_num}  \
-          \n memory amount using memory stress test : {args.mem_amount}")
-
+          \n cpu stress test : {args.cpu_stress} \
+          \n memory stress test : {args.memory_stress} \
+          \n disk I/O test : {args.disk_stress} \
+          \n network I/O test : {args.network_stress} \
+          \n ")
+    
 def cpu_stress(duration:int):
+    print(f"\n cpu cores using cpu stress test : {args.cpu_num}")
     print(f"Generating CPU load. (Duration: {duration} s)")
-    pystress(exec_time=duration,proc_num=args.cpu_num)
-    print(f"CPU Stress test done. (Duration: {duration} s)")
+    pystress(exec_time=duration,proc_num=args.cpu_num) # pystress CPU 부하 테스트
+    print(f"CPU Stress Process created. (Duration: {duration} m)")
     
 def memory_stress(duration:int):
+    print(f"\n memory amount using memory stress test : {args.mem_amount}")
     mem_amount=args.mem_amount
     print(f"Generating memory load. (Duration: {duration} s)")
     command = ["stressapptest", "-s", str(duration), "-M", str(mem_amount)]
@@ -53,8 +55,8 @@ def memory_stress(duration:int):
     print(f"Memory Stress test done. (Duration: {duration} s)")
     
 def disk_stress(duration:int):
+    print(f"\n amount of disk stress : {args.size_mb}")
     print(f"Generating disk I/O load. (Duration: {duration} s)")
-    
     #file write
     with open('tmp','wb') as f:
         f.write(b'\0' * (args.size_mb * 1024 * 1024))
@@ -63,8 +65,7 @@ def disk_stress(duration:int):
     with open('tmp','rb') as f:
         data= f.read()
         time.sleep(duration//2)
-    return
-
+        
 def send_large_post_request():
     # Create large data
     if args.mode=="preprocess":
@@ -81,6 +82,7 @@ def send_large_get_request():
     print(f"Received {len(response.content)} bytes from {url}")
 
 def network_stress(duration):
+    print(f"Network I/O Test mode : {args.network_mode}")
     print(f"Generating network I/O load. (Duration: {duration} s)")
     end_time = time.time() + duration
     while time.time() < end_time:
