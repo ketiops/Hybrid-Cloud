@@ -1,0 +1,36 @@
+[
+    {
+        "instruction": "Translate the following English text to French:",
+        "input": "Hello, how are you?"
+    },
+    {
+        "instruction": "Summarize the following article:",
+        "input": "Artificial intelligence (AI) is intelligence demonstrated by machines, in contrast to the natural intelligence displayed by humans and animals. Leading AI textbooks define the field as the study of intelligent agents: any device that perceives its environment and takes actions that maximize its chance of successfully achieving its goals."
+    },
+    {
+        "instruction": "Calculate the square root of 144."
+    },
+    {
+        "instruction": "List five benefits of regular exercise."
+    },
+    {
+        "instruction": "Write a short poem about the sunset."
+    },
+    {
+        "instruction": "Explain the process of photosynthesis.",
+        "input": "Photosynthesis is a process used by plants and other organisms to convert light energy into chemical energy that can later be released to fuel the organisms' activities."
+    },
+    {
+        "instruction": "Convert the following temperature from Celsius to Fahrenheit:",
+        "input": "25"
+    },
+    {
+        "instruction": "Provide three tips for effective time management."
+    },
+    {
+        "instruction": "Describe the plot of the movie 'Inception'."
+    },
+    {
+        "instruction": "Give an overview of the history of the Roman Empire."
+    }
+]
