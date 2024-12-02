@@ -920,6 +920,12 @@ rules:
   - list
   - watch
 ---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: workflow-controller
+value: 1000000
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -931,7 +937,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: argo
-  namespace: argo
+  namespace: ${NAMESPACE}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -944,11 +950,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: argo-server
-  namespace: argo
----
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: workflow-controller
-value: 1000000
+  namespace: ${NAMESPACE}
 ---
