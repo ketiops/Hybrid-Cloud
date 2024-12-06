@@ -1,7 +1,9 @@
 import os
+import re
 import time
 import json
 import base64
+import random
 import pymysql
 import requests
 import datetime
@@ -115,6 +117,99 @@ def get_workflow_info_from_instance(api_instance, namespace):
             }
     return argo_table
 
+def factorization_dict(_dict):
+    request_set = {'limits','requests'}
+    resource_list = {'cpu','memory'}
+    
+    for i in _dict:
+        if 'container' in i.keys():
+            # item.container.resources가 존재할 경우 추론 처리
+            # item.container.resources가 존재할 경우 limits or requests 둘 중 하나는 반드시 있다.
+            if  'resources' in i['container'].keys():
+                cpu_ram = random.uniform(0.00, 0.70)
+                memory_ram = random.randint(0,500)
+                # limits, requests가 둘 다 있는지, 1개만 있는지 확인
+                if len(request_set)==len(i['container']['resources']):
+                    # request, limits 별 연산 처리를 위한 for문
+                    # req : limits or requests
+                    for req in i['container']['resources']:
+                        # resource를 전부다 가지고 있는지?
+
+                        if len(resource_list) == len(i['container']['resources'][req]):
+                            if req=='requests':
+                                result = float(i['container']['resources'][req]['cpu'])-cpu_ram
+                                i['container']['resources'][req]['cpu']= str(round(result,2))
+                                mem = i['container']['resources'][req]['memory']
+                                nums, unit = re.findall(r'\d+|[A-Za-z]+', mem)
+                                nums = int(''.join(nums))
+                                if unit=='G':
+                                    nums *= 1000
+                                result = str(int(nums)-memory_ram)
+                                i['container']['resources'][req]['memory']= result+'M'
+                            else:
+                                result = float(i['container']['resources'][req]['cpu'])+cpu_ram
+                                i['container']['resources'][req]['cpu']= str(round(result,2))
+                                mem = i['container']['resources'][req]['memory']
+                                nums, unit = re.findall(r'\d+|[A-Za-z]+', mem)
+                                nums = int(''.join(nums))
+                                if unit=='G':
+                                    nums *= 1000
+                                result = str(int(nums)+memory_ram)
+                                i['container']['resources'][req]['memory']= result+'M'
+                        # cpu, memory중 1개만 가지고 있을 경우..
+                        else:
+                            ele_resources_key = [*i['container']['resources'][req]]
+                            diff_resource = list(resource_list - set(ele_resources_key))[0]
+                            if req=='requests':
+                                # req: requests
+                                if diff_resource == 'cpu':
+                                    result = round(cpu_ram,2)
+                                    # print(result)
+                                    i['container']['resources'][req][diff_resource]= str(result)
+                                    print(result, cpu_ram)
+                                    print(i['container']['resources'][req])
+                                    if i['container']['resources'][req]['memory'][-1]=="G":
+                                        mem = i['container']['resources'][req]['memory']
+                                        nums, unit = re.findall(r'\d+|[A-Za-z]+', mem)
+                                        nums = int(nums)
+                                        nums *= 1000
+                                        i['container']['resources'][req]['memory']= str(nums)+'M'
+                                else:
+                                    result = str(memory_ram)
+                                    i['container']['resources'][req][diff_resource]= result+'M'
+                            else:
+                                # req: limits
+                                if diff_resource == 'cpu':
+                                    result = round(cpu_ram + 1.29,2)
+                                    i['container']['resources'][req][diff_resource]= str(result)
+                                    print(result, cpu_ram, req)
+                                    print(i['container']['resources'][req])
+                                else:
+                                    result = str(memory_ram)
+                                    i['container']['resources'][req][diff_resource]= result+'M'
+                    # print(i['container']['resources'])
+                    # print('\n') 
+                # limits, requests 둘 중 하나가 없을때
+                else:
+                    ele_request_key= [*i['container']['resources']]
+                    diff_request = list(request_set - set(ele_request_key))[0]
+                    i['container']['resources'][diff_request] = {'cpu' : str(round(cpu_ram,2)), 'memory': str(memory_ram)+'M'}
+            # item.container.resources가 존재하지 않을 경우 처리
+            # todo : 아무것도 없는 리소스들은 db에서 각 컴포넌트별 데이터셋의 평균 +- @ 값 처리
+            # limits : +@, request : -@
+            else:
+                # cpu_ram, memory_ram 지역 변수로 할당
+                cpu_ram = random.uniform(0.00, 2.00)
+                memory_ram = random.randint(0, 500)
+                i['container']['resources'] = {'requests': 
+                                               {'cpu':str(round(cpu_ram,2)), 
+                                                'memory': str(memory_ram)+'M'}, 
+                                               'limits': 
+                                               {'cpu': str(round(cpu_ram+ 1.18,2)) , 
+                                                'memory': str(memory_ram+ 259)+'M'}}
+            print(i['container']['resources'])
+    return _dict
+
 # 첫 번째 엔드포인트: 데이터베이스에 POST 요청 결과 저장
 @app.route('/api/v1/strato', methods=['POST'])
 def ml_post():
@@ -142,7 +237,7 @@ def ml_post():
         "yaml": encoded_yaml
     }
     
-    token = "9ed36fd5-4c9b-4fba-827c-84edac08637c"
+    token = os.getenv('TOKEN')
     headers = {
         "Authorization": token,
         "accept": "*/*",
@@ -151,7 +246,6 @@ def ml_post():
     response = requests.post(url, headers=headers, data=json.dumps(data))
     if response.status_code == 200:
         response_data = response.json()
-        
         if response_data.get("code") == "10001":  # 정상처리 확인
             metadata = json.dumps(data)  # metadata로 저장
             save_response_to_db(mlid, encoded_yaml, metadata)
@@ -178,6 +272,21 @@ def get_workflow_info():
     except Exception as e:
         return {"status": "failure", "error": str(e)}
 
+# Informer Prediction
+@app.route('/api/v1/predict', methods=['POST'])
+def predict_resources():
+    url = os.getenv('URL')
+    # 요청 데이터에서 cluster와 base64 인코딩된 yaml 가져오기
+    request_data = request.get_json()
+    # cluster_idx = request_data.get("cluster", 1)  # cluster 기본값 1
+    # encoded_yaml = request_data.get("json")  # 요청에서 인코딩된 yaml 가져오기
+    result = factorization_dict(request_data)
+    
+    try:
+        return {"status": "succeeded", "items": result}
+    except Exception as e:
+        return {"status": "failure", "error": str(e)}    
+    
 if __name__ == '__main__':
     port = os.getenv("PYTHON_SERVER_PORT")
     app.run(host='0.0.0.0', port=port, debug=True)
