@@ -20,203 +20,203 @@ metadata:
     workflows.argoproj.io/description: This is the minimum recommended permissions needed if you want to use the agent, e.g. for HTTP or plugin templates. If <= v3.2 you must replace `workflowtasksets/status` with `patch workflowtasksets`.
   name: agent
 rules:
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflowtasksets
-  verbs:
-  - list
-  - watch
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflowtasksets/status
-  verbs:
-  - patch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowtasksets
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowtasksets/status
+    verbs:
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: argo-role
 rules:
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - get
-  - update
-- apiGroups:
-  - ''
-  resources:
-  - pods
-  - pods/exec
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - ''
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - watch
-  - list
-- apiGroups:
-  - ''
-  resources:
-  - persistentvolumeclaims
-  - persistentvolumeclaims/finalizers
-  verbs:
-  - create
-  - update
-  - delete
-  - get
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflows
-  - workflows/finalizers
-  - workflowtasksets
-  - workflowtasksets/finalizers
-  - workflowartifactgctasks
-  verbs:
-  - get
-  - list
-  - watch
-  - update
-  - patch
-  - delete
-  - create
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflowtemplates
-  - workflowtemplates/finalizers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflowtaskresults
-  verbs:
-  - list
-  - watch
-  - deletecollection
-- apiGroups:
-  - ''
-  resources:
-  - serviceaccounts
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - ''
-  resources:
-  - secrets
-  verbs:
-  - get
-- apiGroups:
-  - argoproj.io
-  resources:
-  - cronworkflows
-  - cronworkflows/finalizers
-  verbs:
-  - get
-  - list
-  - watch
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - ''
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
-- apiGroups:
-  - policy
-  resources:
-  - poddisruptionbudgets
-  verbs:
-  - create
-  - get
-  - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - get
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/exec
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+      - persistentvolumeclaims/finalizers
+    verbs:
+      - create
+      - update
+      - delete
+      - get
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflows
+      - workflows/finalizers
+      - workflowtasksets
+      - workflowtasksets/finalizers
+      - workflowartifactgctasks
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - delete
+      - create
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowtemplates
+      - workflowtemplates/finalizers
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowtaskresults
+    verbs:
+      - list
+      - watch
+      - deletecollection
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - cronworkflows
+      - cronworkflows/finalizers
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - create
+      - get
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: argo-server-role
 rules:
-- apiGroups:
-  - ''
-  resources:
-  - configmaps
-  verbs:
-  - get
-  - watch
-  - list
-- apiGroups:
-  - ''
-  resources:
-  - secrets
-  verbs:
-  - get
-  - create
-- apiGroups:
-  - ''
-  resources:
-  - pods
-  - pods/exec
-  - pods/log
-  verbs:
-  - get
-  - list
-  - watch
-  - delete
-- apiGroups:
-  - ''
-  resources:
-  - events
-  verbs:
-  - watch
-  - create
-  - patch
-- apiGroups:
-  - ''
-  resources:
-  - serviceaccounts
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - argoproj.io
-  resources:
-  - eventsources
-  - sensors
-  - workflows
-  - workfloweventbindings
-  - workflowtemplates
-  - cronworkflows
-  - cronworkflows/finalizers
-  verbs:
-  - create
-  - get
-  - list
-  - watch
-  - update
-  - patch
-  - delete
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/exec
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - watch
+      - create
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - eventsources
+      - sensors
+      - workflows
+      - workfloweventbindings
+      - workflowtemplates
+      - cronworkflows
+      - cronworkflows/finalizers
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -225,19 +225,19 @@ metadata:
     workflows.argoproj.io/description: This is the minimum recommended permissions needed if you want to use artifact GC.
   name: artifactgc
 rules:
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflowartifactgctasks
-  verbs:
-  - list
-  - watch
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflowartifactgctasks/status
-  verbs:
-  - patch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowartifactgctasks
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowartifactgctasks/status
+    verbs:
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -246,13 +246,13 @@ metadata:
     workflows.argoproj.io/description: Recomended minimum permissions for the `emissary` executor.
   name: executor
 rules:
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflowtaskresults
-  verbs:
-  - create
-  - patch
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowtaskresults
+    verbs:
+      - create
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -261,38 +261,38 @@ metadata:
     workflows.argoproj.io/description: This is an example of the permissions you would need if you wanted to use a resource template to create and manage other pods. The same pattern would be suitable for other resurces, e.g. a service
   name: pod-manager
 rules:
-- apiGroups:
-  - ''
-  resources:
-  - pods
-  verbs:
-  - create
-  - get
-  - patch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - create
+      - get
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: submit-workflow-template
 rules:
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workfloweventbindings
-  verbs:
-  - list
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflowtemplates
-  verbs:
-  - get
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflows
-  verbs:
-  - create
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workfloweventbindings
+    verbs:
+      - list
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflowtemplates
+    verbs:
+      - get
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflows
+    verbs:
+      - create
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -301,13 +301,13 @@ metadata:
     workflows.argoproj.io/description: This is an example of the permissions you would need if you wanted to use a resource template to create and manage other workflows. The same pattern would be suitable for other resurces, e.g. a service
   name: workflow-manager
 rules:
-- apiGroups:
-  - argoproj.io
-  resources:
-  - workflows
-  verbs:
-  - create
-  - get
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - workflows
+    verbs:
+      - create
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -318,8 +318,8 @@ roleRef:
   kind: Role
   name: agent
 subjects:
-- kind: ServiceAccount
-  name: default
+  - kind: ServiceAccount
+    name: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -330,8 +330,8 @@ roleRef:
   kind: Role
   name: argo-role
 subjects:
-- kind: ServiceAccount
-  name: argo
+  - kind: ServiceAccount
+    name: argo
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -342,8 +342,8 @@ roleRef:
   kind: Role
   name: argo-server-role
 subjects:
-- kind: ServiceAccount
-  name: argo-server
+  - kind: ServiceAccount
+    name: argo-server
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -354,8 +354,8 @@ roleRef:
   kind: Role
   name: artifactgc
 subjects:
-- kind: ServiceAccount
-  name: default
+  - kind: ServiceAccount
+    name: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -366,8 +366,8 @@ roleRef:
   kind: Role
   name: executor
 subjects:
-- kind: ServiceAccount
-  name: default
+  - kind: ServiceAccount
+    name: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -378,9 +378,9 @@ roleRef:
   kind: Role
   name: submit-workflow-template
 subjects:
-- kind: ServiceAccount
-  name: github.com
-  namespace: ${NAMESPACE}
+  - kind: ServiceAccount
+    name: github.com
+    namespace: ${NAMESPACE}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -391,8 +391,8 @@ roleRef:
   kind: Role
   name: pod-manager
 subjects:
-- kind: ServiceAccount
-  name: default
+  - kind: ServiceAccount
+    name: default
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -403,8 +403,8 @@ roleRef:
   kind: Role
   name: workflow-manager
 subjects:
-- kind: ServiceAccount
-  name: default
+  - kind: ServiceAccount
+    name: default
 ---
 apiVersion: v1
 data:
@@ -420,7 +420,7 @@ data:
       secretKeySecret:
         name: my-minio-cred
         key: secretkey
-  empty: ''
+  empty: ""
   my-key: |
     archiveLogs: true
     s3:
@@ -487,7 +487,7 @@ data:
     enabled: true
     path: /metrics
     port: 9090
-  namespaceParallelism: '10'
+  namespaceParallelism: "10"
   persistence: |
     connectionPool:
       maxIdleConns: 100
@@ -595,10 +595,10 @@ metadata:
   name: argo-server
 spec:
   ports:
-  - name: web
-    nodePort: ${NODEPORT}
-    port: 2746
-    targetPort: 2746
+    - name: web
+      nodePort: ${NODEPORT}
+      port: 2746
+      targetPort: 2746
   selector:
     app: argo-server
   type: NodePort
@@ -611,10 +611,10 @@ metadata:
   name: httpbin
 spec:
   ports:
-  - name: api
-    port: 9100
-    protocol: TCP
-    targetPort: 80
+    - name: api
+      port: 9100
+      protocol: TCP
+      targetPort: 80
   selector:
     app: httpbin
   type: ClusterIP
@@ -627,14 +627,14 @@ metadata:
   name: minio
 spec:
   ports:
-  - name: api
-    port: 9000
-    protocol: TCP
-    targetPort: 9000
-  - name: dashboard
-    port: 9001
-    protocol: TCP
-    targetPort: 9001
+    - name: api
+      port: 9000
+      protocol: TCP
+      targetPort: 9000
+    - name: dashboard
+      port: 9001
+      protocol: TCP
+      targetPort: 9001
   selector:
     app: minio
   type: ClusterIP
@@ -647,9 +647,9 @@ metadata:
   name: postgres
 spec:
   ports:
-  - port: 5432
-    protocol: TCP
-    targetPort: 5432
+    - port: 5432
+      protocol: TCP
+      targetPort: 5432
   selector:
     app: postgres
 ---
@@ -667,46 +667,46 @@ spec:
         app: argo-server
     spec:
       containers:
-      - args:
-        - server
-        - --namespaced
-        - --auth-mode
-        - server
-        - --auth-mode
-        - client
-        env: 
-        - name: ARGO_BASE_HREF
-          value: /argo-server/
-        image: quay.io/argoproj/argocli:latest
-        name: argo-server
-        ports:
-        - containerPort: 2746
-          name: web
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 2746
-            scheme: HTTPS
-          initialDelaySeconds: 10
-          periodSeconds: 20
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-        volumeMounts:
-        - mountPath: /tmp
-          name: tmp
+        - args:
+            - server
+            - --namespaced
+            - --auth-mode
+            - server
+            - --auth-mode
+            - client
+          env:
+            - name: ARGO_BASE_HREF
+              value: /argo-server/
+          image: quay.io/argoproj/argocli:latest
+          name: argo-server
+          ports:
+            - containerPort: 2746
+              name: web
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 2746
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
       nodeSelector:
         kubernetes.io/os: linux
       securityContext:
         runAsNonRoot: true
       serviceAccountName: argo-server
       volumes:
-      - emptyDir: {}
-        name: tmp
+        - emptyDir: {}
+          name: tmp
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -725,23 +725,23 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-      - image: kong/httpbin
-        livenessProbe:
-          httpGet:
-            path: /get
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        name: main
-        ports:
-        - containerPort: 80
-          name: api
-        readinessProbe:
-          httpGet:
-            path: /get
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 10
+        - image: kong/httpbin
+          livenessProbe:
+            httpGet:
+              path: /get
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          name: main
+          ports:
+            - containerPort: 80
+              name: api
+          readinessProbe:
+            httpGet:
+              path: /get
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -760,43 +760,43 @@ spec:
     spec:
       automountServiceAccountToken: false
       containers:
-      - command:
-        - minio
-        - server
-        - --console-address
-        - :9001
-        - /data
-        env:
-        - name: MINIO_ACCESS_KEY
-          value: admin
-        - name: MINIO_SECRET_KEY
-          value: password
-        image: minio/minio:RELEASE.2023-11-15T20-43-25Z
-        lifecycle:
-          postStart:
-            exec:
-              command:
-              - mkdir
-              - -p
-              - /data/my-bucket
-        livenessProbe:
-          httpGet:
-            path: /minio/health/live
-            port: 9000
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        name: main
-        ports:
-        - containerPort: 9000
-          name: api
-        - containerPort: 9001
-          name: dashboard
-        readinessProbe:
-          httpGet:
-            path: /minio/health/ready
-            port: 9000
-          initialDelaySeconds: 5
-          periodSeconds: 10
+        - command:
+            - minio
+            - server
+            - --console-address
+            - :9001
+            - /data
+          env:
+            - name: MINIO_ACCESS_KEY
+              value: admin
+            - name: MINIO_SECRET_KEY
+              value: password
+          image: minio/minio:RELEASE.2023-11-15T20-43-25Z
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - mkdir
+                  - -p
+                  - /data/my-bucket
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          name: main
+          ports:
+            - containerPort: 9000
+              name: api
+            - containerPort: 9001
+              name: dashboard
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -815,23 +815,23 @@ spec:
       name: postgres
     spec:
       containers:
-      - env:
-        - name: POSTGRES_PASSWORD
-          value: password
-        image: postgres:12-alpine
-        name: main
-        ports:
-        - containerPort: 5432
-        readinessProbe:
-          exec:
-            command:
-            - psql
-            - -U
-            - postgres
-            - -c
-            - SELECT 1
-          initialDelaySeconds: 15
-          timeoutSeconds: 2
+        - env:
+            - name: POSTGRES_PASSWORD
+              value: password
+          image: postgres:12-alpine
+          name: main
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command:
+                - psql
+                - -U
+                - postgres
+                - -c
+                - SELECT 1
+            initialDelaySeconds: 15
+            timeoutSeconds: 2
       nodeSelector:
         kubernetes.io/os: linux
 ---
@@ -849,37 +849,37 @@ spec:
         app: workflow-controller
     spec:
       containers:
-      - args:
-        - --namespaced
-        command:
-        - workflow-controller
-        env:
-        - name: LEADER_ELECTION_IDENTITY
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        image: quay.io/argoproj/workflow-controller:latest
-        livenessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /healthz
-            port: 6060
-          initialDelaySeconds: 90
-          periodSeconds: 60
-          timeoutSeconds: 30
-        name: workflow-controller
-        ports:
-        - containerPort: 9090
-          name: metrics
-        - containerPort: 6060
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
+        - args:
+            - --namespaced
+          command:
+            - workflow-controller
+          env:
+            - name: LEADER_ELECTION_IDENTITY
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+          image: quay.io/argoproj/workflow-controller:latest
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 6060
+            initialDelaySeconds: 90
+            periodSeconds: 60
+            timeoutSeconds: 30
+          name: workflow-controller
+          ports:
+            - containerPort: 9090
+              name: metrics
+            - containerPort: 6060
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
       nodeSelector:
         kubernetes.io/os: linux
       priorityClassName: workflow-controller
@@ -895,16 +895,15 @@ metadata:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /$2
   name: argo-server-ingress
-  namespace: keti-crd
 spec:
   ingressClassName: nginx
   rules:
-  - http:
-      paths:
-      - backend:
-          service:
-            name: argo-server
-            port:
-              number: 2746
-        path: /argo-server(/|$)(.*)
-        pathType: Prefix
+    - http:
+        paths:
+          - backend:
+              service:
+                name: argo-server
+                port:
+                  number: 2746
+            path: /argo-server(/|$)(.*)
+            pathType: Prefix
