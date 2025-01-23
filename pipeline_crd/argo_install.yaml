@@ -674,7 +674,9 @@ spec:
         - server
         - --auth-mode
         - client
-        env: []
+        env: 
+        - name: ARGO_BASE_HREF
+          value: /argo-server/
         image: quay.io/argoproj/argocli:latest
         name: argo-server
         ports:
