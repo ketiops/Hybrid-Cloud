@@ -886,3 +886,25 @@ spec:
       securityContext:
         runAsNonRoot: true
       serviceAccountName: argo
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  name: argo-server-ingress
+  namespace: keti-crd
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: argo-server
+            port:
+              number: 2746
+        path: /argo-server(/|$)(.*)
+        pathType: Prefix
