@@ -2,6 +2,7 @@ import os
 import re
 import time
 import json
+import yaml
 import base64
 import random
 import pymysql
@@ -12,7 +13,6 @@ from flask_cors import CORS
 from flask import Flask, request
 from dotenv import load_dotenv
 from argo_workflows.api import workflow_service_api
-from argo_workflows.model.io_argoproj_workflow_v1alpha1_workflow_create_request import IoArgoprojWorkflowV1alpha1WorkflowCreateRequest
 
 # .env 파일에서 환경 변수 불러오기
 load_dotenv()
@@ -20,8 +20,7 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app, resources={r"/api*": {"origins": "*"}})
 
-# MySQL 데이터베이스 연결 함수
-def get_next_mlid():
+def get_db_info():
     connection = pymysql.connect(
         host=os.getenv('DB_HOST'),
         port=int(os.getenv('DB_PORT')),
@@ -31,45 +30,169 @@ def get_next_mlid():
     )
     cursor = connection.cursor()
     table=os.getenv('TABLE_NAME')
+    return connection,cursor,table
+
+def get_current_ml_list():
+    mlid_get_url = os.getenv('URL') + "/interface/api/v2/ml/ml/list"
+    token = os.getenv('TOKEN')
+    headers = {
+        "Authorization": token,
+        "accept": "*/*",
+        "Content-Type": "application/json"
+    }
+    response = requests.post(mlid_get_url, headers=headers, data=json.dumps({}))
+    response_data = response.json()
+    if response_data.get("code",{}) == str(10001):
+        result = response_data.get("result",{})
+    return result
+
+def update_mldb(json_data:list):
+    if not json_data:
+        print("No data received for update.")
+        return
     
-    # mlId를 가져오고 가장 큰 값을 선택
-    cursor.execute("SELECT mlid FROM {} ORDER BY mlid DESC LIMIT 1".format(table))
+    connection, cursor, table = get_db_info()
+    
+    # 테이블 존재 여부 확인
+    check_query = "SHOW TABLES LIKE %s"
+    cursor.execute(check_query, (table,))
+    table_exists = cursor.fetchone()
+
+    # 테이블이 없으면 생성
+    if not table_exists:
+        create_table_query = f"""
+        CREATE TABLE {table} (
+            id VARCHAR(50),
+            mlid VARCHAR(255) PRIMARY KEY,
+            name VARCHAR(255),
+            namespace VARCHAR(255),
+            description TEXT,
+            mlStepCode JSON,  
+            status VARCHAR(255),
+            userId VARCHAR(255),
+            clusterIdx VARCHAR(50)
+        )
+        """
+        cursor.execute(create_table_query)
+        connection.commit()
+        print(f"Table '{table}' was created.")
+
+    # 테이블이 존재하는 경우 데이터 확인
+    get_db_query = f"SELECT * FROM {table}"
+    cursor.execute(get_db_query)
+    result = cursor.fetchall()
+
+    if not result:  # 테이블이 비어 있음
+        print(f"There is no data on '{table}'.")
+    insert_ml_workload_info(json_data)
+
+
+def insert_ml_workload_info(json_data:list):
+    
+    if not json_data:
+        print("No data received for update.")
+        return
+    
+    connection, cursor, table = get_db_info()
+    
+    # 데이터 삽입 쿼리
+    insert_query = f"""
+    INSERT INTO {table}
+    (id, mlId, name, namespace, description, mlStepCode, status, userId, clusterIdx)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE
+        id = VALUES(id),
+        mlId = VALUES(mlId),
+        name = VALUES(name),
+        namespace = VALUES(namespace),
+        description = VALUES(description),
+        mlStepCode = VALUES(mlStepCode),
+        status = VALUES(status),
+        userId = VALUES(userId),
+        clusterIdx = VALUES(clusterIdx)
+    """
+
+    # JSON 데이터 반복 삽입
+    for item in json_data:
+        cursor.execute(insert_query, (
+            item["id"],
+            item["mlId"],
+            item["name"],
+            item["namespace"],
+            item["description"],
+            json.dumps(item["mlStepCode"]),  # 리스트를 JSON 문자열로 변환하여 저장
+            item["status"],
+            item["userId"],
+            item["clusterIdx"]
+        ))
+
+    connection.commit()
+    connection.close()
+    
+    return f"ML data insert successfuly on '{table}'."
+
+def remove_ml(name:str):
+    connection, cursor, table = get_db_info()
+
+    
+    # mlId 파싱 후 DB에 해당 데이터 삭제
+    select_query = f"SELECT mlid FROM {table} WHERE name = %s"
+    cursor.execute(select_query, (name,))
     result = cursor.fetchone()
     
     if result:
-        # 가장 큰 mlId 값에서 1 증가
-        next_mlid = int(result[0]) + 1
-        return f'{next_mlid:03}'  # 세자리로 맞추기
+        mlid = result[0] # result:tuple
+        delete_query = f"DELETE FROM {table} WHERE name = %s"
+        cursor.execute(delete_query, (name,))
+        result = cursor.fetchone()
+    
+    # STRATO Workload 삭제 API 호출을 위한 metadata 파싱
+    db_get_url = os.getenv('URL') + '/interface/api/v2/ml/delete'
+    token = os.getenv('TOKEN')
+    headers = {
+        "Authorization": token,
+        "accept": "*/*",
+        "Content-Type": "application/json"
+    }
+    
+    # STRATO Workload 삭제 API 호출
+    response = requests.post(db_get_url, headers=headers, data=json.dumps({
+        "mlID":mlid
+    }))
+    response_data = response.json()
+    if response_data.get("code",{}) == str(10001):
+        return f"ML Workload retry execution successfully. ({response_data.get("message", {})})"
     else:
-        return "001"  # 만약 값이 없다면 001 반환
+        return f"Error: Failed to communicate with the server, status code {response_data.get("message", {})}"
 
-# 데이터베이스에 response 데이터를 저장하는 함수
-def save_response_to_db(mlid, yaml_data, metadata):
-    connection = pymysql.connect(
-        host=os.getenv('DB_HOST'),
-        port=int(os.getenv('DB_PORT')),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME')
-    )
-    cursor = connection.cursor()
-    table=os.getenv('TABLE_NAME')
+
+# MySQL 데이터베이스 연결 함수
+def get_next_mlid():
+    connection, cursor, table = get_db_info()
+
     
-    # 데이터베이스에 데이터 삽입
-    insert_query = """
-    INSERT INTO {} (mlid, yaml, data)
-    VALUES (%s, %s, %s)
-    """.format(table)
-    
-    cursor.execute(insert_query, (mlid, yaml_data, metadata))
-    connection.commit()
-    connection.close()
+    # mlId를 가져오고 가장 큰 값을 선택
+    cursor.execute(f"SELECT mlid FROM {table} WHERE mlid LIKE 'keti%' ORDER BY mlid DESC LIMIT 1")
+    result = cursor.fetchone()
+    if result:
+        # 가장 큰 mlId 값에서 숫자 부분 추출 후 1 증가
+        current_num = int(result[0][4:])  # 'keti' 이후의 숫자 부분 추출
+        next_num = current_num + 1
+        return f'keti{next_num:03}'  # 세자리로 맞추기
+    else:
+        return "keti001"  # 만약 값이 없다면 keti001 반환
 
 # Argo Workflow API 불러오는 함수
-def load_argo_info(argo_ip, argo_port):
-    configuration = argo_workflows.Configuration(host="https://" + argo_ip + ":" + argo_port)
+def load_argo_info(argo_ip, argo_port=None):
+    # 포트가 존재하지 않을 경우 경로를 직접 설정
+    if argo_port == "" or argo_port is None:
+        host_url = f"https://{argo_ip.rstrip('/')}/argo-server"
+    else:
+        host_url = f"https://{argo_ip}:{argo_port}"
+
+    configuration = argo_workflows.Configuration(host=host_url)
     configuration.verify_ssl = False
-    
+
     api_client = argo_workflows.ApiClient(configuration)
     api_instance = workflow_service_api.WorkflowServiceApi(api_client)
     return api_instance
@@ -117,125 +240,151 @@ def get_workflow_info_from_instance(api_instance, namespace):
             }
     return argo_table
 
-def factorization_dict(_dict):
-    request_set = {'limits','requests'}
-    resource_list = {'cpu','memory'}
-    
+def parse_recommand(_dict):
+    resource_list = {'cpu', 'memory', 'nvidia.com/gpu'}
+    predict_url = os.getenv("RECOMMAND_SERVER")
+    headers = {
+        "accept": "*/*",
+        "Content-Type": "application/json"
+    }
     for i in _dict:
         if 'container' in i.keys():
-            # item.container.resources가 존재할 경우 추론 처리
-            # item.container.resources가 존재할 경우 limits or requests 둘 중 하나는 반드시 있다.
-            if  'resources' in i['container'].keys():
-                cpu_ram = random.uniform(0.00, 0.70)
-                memory_ram = random.randint(0,500)
-                # limits, requests가 둘 다 있는지, 1개만 있는지 확인
-                if len(request_set)==len(i['container']['resources']):
-                    # request, limits 별 연산 처리를 위한 for문
-                    # req : limits or requests
+            if 'ml.workload' in i['metadata']['labels'].keys():
+                workload_label = i['metadata']['labels']['ml.workload']
+                inference_req = {"case" : workload_label}
+                recommand_resources = requests.post(predict_url, headers=headers, data=json.dumps(inference_req))
+                resource_req, resource_lim = recommand_resources.json()['result']['requests'], recommand_resources.json()['result']['limits']
+                req_cpu = resource_req[0][0][0]/100
+                req_mem = resource_req[0][0][1]
+                lim_cpu = resource_lim[0][0][0]/100
+                lim_mem = resource_lim[0][0][1]
+                if 'resources' in i['container'].keys():
+                    # `requests`와 `limits` 각각 처리
                     for req in i['container']['resources']:
-                        # resource를 전부다 가지고 있는지?
-
-                        if len(resource_list) == len(i['container']['resources'][req]):
-                            if req=='requests':
-                                result = float(i['container']['resources'][req]['cpu'])-cpu_ram
-                                i['container']['resources'][req]['cpu']= str(round(result,2))
-                                mem = i['container']['resources'][req]['memory']
-                                nums, unit = re.findall(r'\d+|[A-Za-z]+', mem)
-                                nums = int(''.join(nums))
-                                if unit=='G':
-                                    nums *= 1000
-                                result = str(int(nums)-memory_ram)
-                                i['container']['resources'][req]['memory']= result+'M'
-                            else:
-                                result = float(i['container']['resources'][req]['cpu'])+cpu_ram
-                                i['container']['resources'][req]['cpu']= str(round(result,2))
-                                mem = i['container']['resources'][req]['memory']
-                                nums, unit = re.findall(r'\d+|[A-Za-z]+', mem)
-                                nums = int(''.join(nums))
-                                if unit=='G':
-                                    nums *= 1000
-                                result = str(int(nums)+memory_ram)
-                                i['container']['resources'][req]['memory']= result+'M'
-                        # cpu, memory중 1개만 가지고 있을 경우..
-                        else:
-                            ele_resources_key = [*i['container']['resources'][req]]
-                            diff_resource = list(resource_list - set(ele_resources_key))[0]
-                            if req=='requests':
-                                # req: requests
-                                if diff_resource == 'cpu':
-                                    result = round(cpu_ram,2)
-                                    # print(result)
-                                    i['container']['resources'][req][diff_resource]= str(result)
-                                    print(result, cpu_ram)
-                                    print(i['container']['resources'][req])
-                                    if i['container']['resources'][req]['memory'][-1]=="G":
-                                        mem = i['container']['resources'][req]['memory']
-                                        nums, unit = re.findall(r'\d+|[A-Za-z]+', mem)
-                                        nums = int(nums)
-                                        nums *= 1000
-                                        i['container']['resources'][req]['memory']= str(nums)+'M'
-                                else:
-                                    result = str(memory_ram)
-                                    i['container']['resources'][req][diff_resource]= result+'M'
-                            else:
-                                # req: limits
-                                if diff_resource == 'cpu':
-                                    result = round(cpu_ram + 1.29,2)
-                                    i['container']['resources'][req][diff_resource]= str(result)
-                                    print(result, cpu_ram, req)
-                                    print(i['container']['resources'][req])
-                                else:
-                                    result = str(memory_ram)
-                                    i['container']['resources'][req][diff_resource]= result+'M'
-                    # print(i['container']['resources'])
-                    # print('\n') 
-                # limits, requests 둘 중 하나가 없을때
+                        current_resources = set(i['container']['resources'][req].keys())
+                        missing_resources = resource_list - current_resources
+                        # 누락된 리소스 처리
+                        for resource in missing_resources:
+                            if resource == 'nvidia.com/gpu' and workload_label != "preprocess":
+                                if req == 'limits':
+                                    i['container']['resources'][req]['nvidia.com/gpu'] = '1'  # 기본값 설정
+                            elif resource == 'cpu':
+                                i['container']['resources'][req]['cpu'] = str(round(req_cpu, 2))
+                            elif resource == 'memory':
+                                i['container']['resources'][req]['memory'] = str(req_mem) + 'Mi'
+                        # 기존 리소스 처리
+                        if req == 'requests':
+                            i['container']['resources'][req].pop('nvidia.com/gpu', None)  # GPU 제거
+                            if 'cpu' in i['container']['resources'][req]:
+                                i['container']['resources'][req]['cpu'] = str(round(req_cpu, 2))
+                            if 'memory' in i['container']['resources'][req]:
+                                i['container']['resources'][req]['memory'] = str(round(req_mem,2)) + 'Mi'
+                        elif req == 'limits':
+                            if 'cpu' in i['container']['resources'][req]:
+                                i['container']['resources'][req]['cpu'] = str(round(lim_cpu, 2))
+                            if 'memory' in i['container']['resources'][req]:
+                                i['container']['resources'][req]['memory'] = str(round(lim_mem,2)) + 'Mi'
                 else:
-                    ele_request_key= [*i['container']['resources']]
-                    diff_request = list(request_set - set(ele_request_key))[0]
-                    i['container']['resources'][diff_request] = {'cpu' : str(round(cpu_ram,2)), 'memory': str(memory_ram)+'M'}
-            # item.container.resources가 존재하지 않을 경우 처리
-            # todo : 아무것도 없는 리소스들은 db에서 각 컴포넌트별 데이터셋의 평균 +- @ 값 처리
-            # limits : +@, request : -@
+                    # resources가 없는 경우 기본값 추가
+                    i['container']['resources'] = {
+                        'requests': {
+                            'cpu': str(round(req_cpu, 2)),
+                            'memory': str(req_mem) + 'Mi',
+                        },
+                        'limits': {
+                            'cpu': str(round(lim_cpu, 2)),
+                            'memory': str(lim_mem) + 'Mi',
+                            'nvidia.com/gpu': '1'
+                        }
+                    }
+                print("Current ML Workload Label: ",workload_label)
+                print("Recommand Resources : \n", i['container']['resources'])
             else:
-                # cpu_ram, memory_ram 지역 변수로 할당
-                cpu_ram = random.uniform(0.00, 2.00)
-                memory_ram = random.randint(0, 500)
-                i['container']['resources'] = {'requests': 
-                                               {'cpu':str(round(cpu_ram,2)), 
-                                                'memory': str(memory_ram)+'M'}, 
-                                               'limits': 
-                                               {'cpu': str(round(cpu_ram+ 1.18,2)) , 
-                                                'memory': str(memory_ram+ 259)+'M'}}
-            print(i['container']['resources'])
+                i['container']['resources'] = {
+                        'requests': {
+                            'cpu': None,
+                            'memory': None,
+                        },
+                        'limits': {
+                            'cpu': None,
+                            'memory': None,
+                        }
+                    }
+                print("There is no label for ML workloads. Recommand does not occur")
     return _dict
 
 # 첫 번째 엔드포인트: 데이터베이스에 POST 요청 결과 저장
 @app.route('/api/v1/strato', methods=['POST'])
 def ml_post():
-    url = os.getenv('URL')
-    # 요청 데이터에서 cluster와 base64 인코딩된 yaml 가져오기
+    ml_workload_list = get_current_ml_list()
+    update_mldb(ml_workload_list)
+
+    # 요청 데이터에서 cluster와 base64 인코딩된 yaml 가져오기   
     request_data = request.get_json()
     cluster_idx = request_data.get("cluster", 1)  # cluster 기본값 1
     encoded_yaml = request_data.get("yaml")  # 요청에서 인코딩된 yaml 가져오기
+    retry = request_data.get("retry")
     
     # MySQL에서 mlId 가져오기
     mlid = get_next_mlid()
+    decoded_yaml = base64.b64decode(encoded_yaml).decode("utf-8")
+    parsed_yaml = yaml.safe_load(decoded_yaml)
 
-    data = {
-        "clusterIdx": cluster_idx,
-        "description": "keti-ml-workload-test",
-        "mlId": mlid,
-        "mlStepCode": [
-            "ml-step-100",
-            "ml-step-200",
-            "ml-step-400"
-        ],
-        "name": "keti-ml",
-        "namespace": "keti-crd",
-        "userId": "jhpark",
-        "yaml": encoded_yaml
-    }
+    # 변수 추출
+    metadata = json.loads(parsed_yaml['metadata']['annotations']['pipelines.kubeflow.org/pipeline_spec'])
+    name = metadata['name']
+    description = metadata['description']
+    userid = "jhpark"
+    
+    # ml.workload.id 컴포넌트 별 추가
+    if 'spec' in parsed_yaml and 'templates' in parsed_yaml['spec']:
+        for template in parsed_yaml['spec']['templates']:
+            if 'metadata' in template:
+                labels = template['metadata'].setdefault('labels', {})
+                labels['ml.workload.id'] = userid  # 라벨 형식으로 추가
+    
+    # 수정된 YAML을 다시 base64로 인코딩
+    updated_yaml = yaml.dump(parsed_yaml, sort_keys=False)
+    updated_encoded_yaml = base64.b64encode(updated_yaml.encode('utf-8')).decode('utf-8')
+    
+    if retry:
+        remove_ml(name)
+        data = {
+            "clusterIdx": cluster_idx,
+            "description": description,
+            "mlId": mlid,
+            "mlStepCode": [
+                "ml-step-100",
+                "ml-step-200",
+                "ml-step-400"
+            ],
+            "name": name,
+            "namespace": "keti-crd",
+            "userId": "jhpark",
+            "yaml": updated_encoded_yaml,
+            "overwrite": 1
+        }
+
+    else:
+        data = {
+            "clusterIdx": cluster_idx,
+            "description": description,
+            "mlId": mlid,
+            "mlStepCode": [
+                "ml-step-100",
+                "ml-step-200",
+                "ml-step-400"
+            ],
+            "name": name,
+            "namespace": "keti-crd",
+            "userId": "jhpark",
+            "yaml": updated_encoded_yaml,
+            "overwrite": 0
+            }
+        
+    data_json = json.dumps(data,ensure_ascii=False)
+    print("ML Workload data : ")
+    print(data_json)
     
     token = os.getenv('TOKEN')
     headers = {
@@ -243,15 +392,22 @@ def ml_post():
         "accept": "*/*",
         "Content-Type": "application/json"
     }
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-    if response.status_code == 200:
-        response_data = response.json()
-        if response_data.get("code") == "10001":  # 정상처리 확인
-            metadata = json.dumps(data)  # metadata로 저장
-            save_response_to_db(mlid, encoded_yaml, metadata)
-            return "Data saved successfully."
+    
+    ml_post_url = os.getenv('URL') + '/interface/api/v2/ml/apply'
+    response = requests.post(ml_post_url, headers=headers, data=data_json)
+    response_data = response.json()
+    print(response_data)
+    if response_data.get("code",{}) == str(10001):
+        result = response_data.get("result", {})
+        if result.get("success") is True:
+            insert_ml_workload_info([result.get("workload")])
+            # metadata = json.dumps(data)  # metadata로 저장
+            # save_response_to_db(mlid, encoded_yaml, metadata)
+            return "ML Workload running was successfully."
         else:
-            return f"Error: {response_data.get('message')}"
+            return f"Error: {response_data}"
+    elif response_data.get("code",{}) == str(10002):
+        return F"Error: Server error : {response_data.get("message", {})}"
     else:
         return f"Error: Failed to communicate with the server, status code {response.status_code}"
 
@@ -264,7 +420,6 @@ def get_workflow_info():
 
     if not argo_ip or not namespace:
         return {"status": "failure", "error": "IP and namespace are required query parameters."}, 400
-    
     try:
         api_instance = load_argo_info(argo_ip, argo_port)
         workflows_info = get_workflow_info_from_instance(api_instance, namespace)
@@ -272,16 +427,12 @@ def get_workflow_info():
     except Exception as e:
         return {"status": "failure", "error": str(e)}
 
-# Informer Prediction
+# 세 번째 엔드포인트: Informer Prediction
 @app.route('/api/v1/predict', methods=['POST'])
 def predict_resources():
-    url = os.getenv('URL')
     # 요청 데이터에서 cluster와 base64 인코딩된 yaml 가져오기
     request_data = request.get_json()
-    # cluster_idx = request_data.get("cluster", 1)  # cluster 기본값 1
-    # encoded_yaml = request_data.get("json")  # 요청에서 인코딩된 yaml 가져오기
-    result = factorization_dict(request_data)
-    
+    result = parse_recommand(request_data)
     try:
         return {"status": "succeeded", "items": result}
     except Exception as e:
