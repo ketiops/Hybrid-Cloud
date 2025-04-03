@@ -36,6 +36,7 @@ def test_info(total_time:int):
           \n each test duration : {args.time}m \
           \n cpu stress test : {args.cpu_stress} \
           \n memory stress test : {args.memory_stress} \
+          \n gpu stress test : {args.gpu_stress} \
           \n disk I/O test : {args.disk_stress} \
           \n network I/O test : {args.network_stress} \
           \n ")
@@ -66,19 +67,23 @@ def disk_stress(duration:int):
         data= f.read()
         time.sleep(duration//2)
         
-def send_large_post_request():
+def send_post_request():
     # Create large data
-    if args.mode=="preprocess":
-        large_data = 'x' * 10**8  # 10MB data
+    if args.network_mode=="preprocess":
+        large_data = 'x' * 10**7
     else:
         large_data = 'x' * 10**4
     url = f"{args.net_url}:{args.net_port}/post"
     response = requests.post(url, data=large_data)
     print(f"Sent {len(large_data)} bytes to {url}, received {len(response.content)} bytes")
 
-def send_large_get_request():
-    url = f"{args.net_url}:{args.net_port}/get"
-    response = requests.get(url)
+def send_get_request(network_mode:str):
+    if network_mode=='preprocess':
+        url = f"{args.net_url}:{args.net_port}/pre_get"
+        response = requests.get(url)
+    else:
+        url = f"{args.net_url}:{args.net_port}/inf_get"
+        response = requests.get(url)
     print(f"Received {len(response.content)} bytes from {url}")
 
 def network_stress(duration):
@@ -86,12 +91,12 @@ def network_stress(duration):
     print(f"Generating network I/O load. (Duration: {duration} s)")
     end_time = time.time() + duration
     while time.time() < end_time:
-        send_large_post_request()
-        send_large_get_request()
+        send_post_request()
+        send_get_request(args.network_mode)
         time.sleep(1)
 
 def main():
-    test_num = args.cpu_stress + args.mem_stress + args.gpu_stress + args.disk_stress + args.network_stress
+    test_num = args.cpu_stress + args.memory_stress + args.gpu_stress + args.disk_stress + args.network_stress
     total_time = args.time * 60 * test_num
     test_time = args.time * 60
     test_info(total_time)
