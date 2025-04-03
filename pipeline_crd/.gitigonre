@@ -1,0 +1,6 @@
+.gitignore
+nodeport_change.py
+argo_install_ok.yaml
+argo_install_tmp.yaml
+argo_cluster_resource_tmp.yaml
+.env
