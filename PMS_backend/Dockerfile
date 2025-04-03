@@ -12,4 +12,4 @@ RUN pip install -r requirements.txt
 
 EXPOSE 32000
 
-CMD [ "python", "main.py" ]
+CMD [ "python", "app.py" ]
